@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ai Là Triệu Phú - Vật Lí</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at center, #1a2a6c, #112 80%);
+            background-attachment: fixed;
+            color: white;
+            user-select: none;
+        }
+
+        /* Polygon shapes for buttons */
+        .answer-btn {
+            position: relative;
+            background: linear-gradient(180deg, #0f1b4c 0%, #060d28 100%);
+            border: 2px solid #3b82f6;
+            border-radius: 50px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), inset 0 2px 10px rgba(59, 130, 246, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .answer-btn:hover {
+            background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%);
+            border-color: #60a5fa;
+            transform: scale(1.02);
+            cursor: pointer;
+        }
+
+        .answer-btn.selected {
+            background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+            border-color: #fcd34d;
+            animation: pulse-orange 0.5s infinite alternate;
+        }
+
+        .answer-btn.correct {
+            background: linear-gradient(180deg, #16a34a 0%, #14532d 100%);
+            border-color: #86efac;
+            animation: pulse-green 0.5s infinite alternate;
+        }
+
+        .answer-btn.wrong {
+            background: linear-gradient(180deg, #dc2626 0%, #7f1d1d 100%);
+            border-color: #fca5a5;
+        }
+
+        .answer-btn.hidden-5050 {
+            visibility: hidden;
+        }
+
+        @keyframes pulse-orange {
+            from { box-shadow: 0 0 10px #f59e0b; }
+            to { box-shadow: 0 0 25px #fbbf24; }
+        }
+        @keyframes pulse-green {
+            from { box-shadow: 0 0 10px #22c55e; }
+            to { box-shadow: 0 0 25px #4ade80; }
+        }
+
+        .milestone-active {
+            background-color: #d97706;
+            color: white;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+        .milestone-safe {
+            color: #fcd34d;
+            font-weight: bold;
+        }
+        .milestone-passed {
+            color: #9ca3af;
+        }
+
+        .modal-overlay {
+            backdrop-filter: blur(5px);
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .gift-box {
+            transition: transform 0.3s;
+            cursor: pointer;
+        }
+        .gift-box:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+        .gift-box.opened {
+            transform: scale(1.2);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen w-full flex flex-col overflow-x-hidden">
+
+    <!-- START SCREEN -->
+    <div id="startScreen" class="flex flex-col items-center justify-center min-h-screen w-full z-50 bg-[#0a0f24]">
+        <div class="text-center p-6 md:p-8 rounded-2xl bg-blue-900/40 border border-blue-500/50 shadow-[0_0_50px_rgba(59,130,246,0.3)] max-w-xl mx-4 my-8">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-yellow-400 mb-6 drop-shadow-lg leading-tight">
+                AI LÀ TRIỆU PHÚ
+            </h1>
+            <p class="text-blue-200 mb-8 text-base md:text-lg">Chủ đề: Phương pháp nghiên cứu Vật lí<br>20 Câu hỏi - 10 Điểm</p>
+            <button onclick="initGame()" class="px-8 py-3 md:px-10 md:py-4 bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white font-bold rounded-full text-lg md:text-xl shadow-[0_0_20px_rgba(59,130,246,0.5)] transition-all transform hover:scale-105">
+                BẮT ĐẦU CHƠI
+            </button>
+            <p class="text-sm text-gray-400 mt-6">* Click để bật âm thanh trình duyệt</p>
+        </div>
+    </div>
+
+    <!-- APP WRAPPER -->
+    <div id="appWrapper" class="hidden flex-1 w-full flex-col md:flex-row">
+        
+        <!-- MAIN GAME AREA -->
+        <div class="flex-1 flex flex-col p-4 md:p-6 relative" id="gameArea">
+            
+            <!-- Header: Lifelines & Mobile Score -->
+            <div class="flex justify-between items-center mb-6 mt-2 md:mt-0">
+                <div class="flex gap-2 md:gap-3">
+                    <button id="btn5050" onclick="use5050()" class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-900 border-2 border-blue-400 flex items-center justify-center font-bold hover:bg-blue-800 transition-colors shadow-lg text-sm md:text-base" title="50:50">
+                        50
+                    </button>
+                    <button id="btnCall" onclick="useCall()" class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-900 border-2 border-blue-400 flex items-center justify-center font-bold hover:bg-blue-800 transition-colors shadow-lg text-sm md:text-base" title="Gọi người thân">
+                        📞
+                    </button>
+                    <button id="btnAudience" onclick="useAudience()" class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-blue-900 border-2 border-blue-400 flex items-center justify-center font-bold hover:bg-blue-800 transition-colors shadow-lg text-sm md:text-base" title="Hỏi ý kiến khán giả">
+                        👥
+                    </button>
+                </div>
+                <div class="md:hidden text-yellow-400 font-bold text-lg md:text-xl bg-blue-900/50 px-3 py-1.5 rounded-full border border-blue-500/50">
+                    Điểm: <span id="mobileScore">0</span>
+                </div>
+            </div>
+
+            <!-- Question Container -->
+            <div class="flex-1 flex flex-col justify-center items-center w-full max-w-4xl mx-auto z-10 my-4 md:my-0">
+                <div class="w-full relative mb-6 md:mb-8 mt-4 md:mt-0">
+                    <!-- Question Number Badge -->
+                    <div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black font-bold px-4 py-1 rounded-full z-10 shadow-lg text-sm md:text-base whitespace-nowrap">
+                        Câu <span id="qNumberDisplay">1</span>
+                    </div>
+                    <!-- Question Text -->
+                    <div class="bg-gradient-to-b from-[#172554] to-[#0f1b4c] border-2 border-blue-400 rounded-2xl md:rounded-3xl p-6 pt-8 md:p-8 md:pt-10 text-center shadow-[0_0_30px_rgba(59,130,246,0.3)] w-full min-h-[120px] flex items-center justify-center">
+                        <h2 id="questionText" class="text-lg md:text-2xl font-semibold leading-relaxed">
+                            Đang tải câu hỏi...
+                        </h2>
+                    </div>
+                </div>
+
+                <!-- Answers Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 w-full mb-8 md:mb-0">
+                    <div id="ans0" onclick="selectAnswer(0)" class="answer-btn p-3 md:p-4 flex items-center group min-h-[60px]">
+                        <span class="text-yellow-400 font-bold mr-3 md:mr-4 text-lg md:text-xl group-hover:text-yellow-300 shrink-0">A.</span>
+                        <span id="text0" class="text-base md:text-lg"></span>
+                    </div>
+                    <div id="ans1" onclick="selectAnswer(1)" class="answer-btn p-3 md:p-4 flex items-center group min-h-[60px]">
+                        <span class="text-yellow-400 font-bold mr-3 md:mr-4 text-lg md:text-xl group-hover:text-yellow-300 shrink-0">B.</span>
+                        <span id="text1" class="text-base md:text-lg"></span>
+                    </div>
+                    <div id="ans2" onclick="selectAnswer(2)" class="answer-btn p-3 md:p-4 flex items-center group min-h-[60px]">
+                        <span class="text-yellow-400 font-bold mr-3 md:mr-4 text-lg md:text-xl group-hover:text-yellow-300 shrink-0">C.</span>
+                        <span id="text2" class="text-base md:text-lg"></span>
+                    </div>
+                    <div id="ans3" onclick="selectAnswer(3)" class="answer-btn p-3 md:p-4 flex items-center group min-h-[60px]">
+                        <span class="text-yellow-400 font-bold mr-3 md:mr-4 text-lg md:text-xl group-hover:text-yellow-300 shrink-0">D.</span>
+                        <span id="text3" class="text-base md:text-lg"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SIDEBAR (Progress) -->
+        <div id="sidebar" class="hidden md:flex flex-col w-64 bg-black/40 border-l border-blue-500/30 p-4 shrink-0 h-screen sticky top-0 overflow-y-auto">
+            <h3 class="text-center font-bold text-gray-300 mb-4 border-b border-gray-600 pb-2">BẢNG ĐIỂM</h3>
+            <div id="milestoneList" class="flex flex-col-reverse gap-1 text-right text-lg">
+                <!-- Populated via JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Detailed Answer -->
+    <div id="detailModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4">
+        <div class="bg-gradient-to-b from-blue-900 to-[#0a0f24] border border-blue-400 rounded-2xl p-6 max-w-2xl w-full shadow-2xl transform transition-all text-center">
+            <h3 id="detailTitle" class="text-3xl font-bold mb-4">Kết quả</h3>
+            <div id="detailContent" class="text-lg mb-6 bg-blue-950/50 p-4 rounded-xl border border-blue-500/30">
+                Chi tiết đáp án ở đây.
+            </div>
+            <button onclick="closeDetailModal()" class="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-bold shadow-lg transition-colors">
+                TIẾP TỤC
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: Game Over / Win -->
+    <div id="endModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4">
+        <div class="bg-gradient-to-b from-blue-900 to-[#0a0f24] border border-blue-400 rounded-2xl p-8 max-w-md w-full shadow-2xl text-center">
+            <h2 id="endTitle" class="text-4xl font-bold mb-2 text-yellow-400">GAME OVER</h2>
+            <p class="text-xl mb-6">Bạn giành được: <span id="endScore" class="font-bold text-2xl text-white">0</span> <span class="text-yellow-400">Điểm</span></p>
+            <button onclick="location.reload()" class="px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black rounded-full font-bold shadow-lg transition-colors">
+                CHƠI LẠI
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL: Secret Gift -->
+    <div id="giftModal" class="fixed inset-0 z-[60] hidden items-center justify-center modal-overlay p-4">
+        <div class="bg-[#1e1b4b] border-2 border-yellow-400 rounded-3xl p-8 max-w-3xl w-full shadow-[0_0_50px_rgba(250,204,21,0.3)] text-center">
+            <h2 class="text-3xl md:text-4xl font-bold mb-4 text-yellow-400 drop-shadow-md">🎉 CHÚC MỪNG BẠN ĐẠT 8 ĐIỂM 🎉</h2>
+            <p class="mb-8 text-lg text-blue-200">Bạn đã xuất sắc vượt qua 16 câu hỏi! Hãy chọn 1 trong 3 hộp quà bí mật dưới đây:</p>
+            
+            <div class="flex justify-center gap-6 md:gap-12 mb-8" id="giftBoxes">
+                <div class="gift-box text-6xl md:text-8xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]" onclick="openGift(0)">🎁</div>
+                <div class="gift-box text-6xl md:text-8xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]" onclick="openGift(1)">🎁</div>
+                <div class="gift-box text-6xl md:text-8xl drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]" onclick="openGift(2)">🎁</div>
+            </div>
+
+            <div id="giftResult" class="hidden">
+                <h3 class="text-2xl font-bold text-green-400 mb-2">Phần thưởng của bạn là:</h3>
+                <p id="giftText" class="text-xl font-bold bg-black/50 p-4 rounded-xl border border-green-500 inline-block"></p>
+                <br>
+                <button onclick="closeGiftModal()" class="mt-6 px-8 py-3 bg-yellow-600 hover:bg-yellow-500 text-black rounded-full font-bold shadow-lg transition-colors">
+                    NHẬN THƯỞNG VÀ ĐI TIẾP
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Lifeline Call -->
+    <div id="callModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4">
+        <div class="bg-blue-900 border border-blue-400 rounded-2xl p-6 max-w-sm w-full shadow-2xl text-center">
+            <div class="text-6xl mb-4">📞</div>
+            <h3 class="text-xl font-bold mb-2">Đang gọi người thân...</h3>
+            <p id="callMessage" class="text-lg bg-black/30 p-4 rounded-lg italic mb-6">...</p>
+            <button onclick="closeCallModal()" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-full font-bold shadow-lg transition-colors">Cảm ơn!</button>
+        </div>
+    </div>
+
+    <!-- MODAL: Lifeline Audience -->
+    <div id="audienceModal" class="fixed inset-0 z-50 hidden items-center justify-center modal-overlay p-4">
+        <div class="bg-blue-900 border border-blue-400 rounded-2xl p-6 max-w-md w-full shadow-2xl text-center">
+            <h3 class="text-2xl font-bold mb-6">Ý kiến khán giả</h3>
+            <div class="flex items-end justify-center gap-4 h-40 mb-6 border-b border-gray-500 pb-2">
+                <div class="flex flex-col items-center w-12"><div id="bar0" class="w-full bg-blue-500 rounded-t-sm transition-all duration-1000" style="height: 0%"></div><span class="mt-2 font-bold">A</span><span id="pct0" class="text-xs">0%</span></div>
+                <div class="flex flex-col items-center w-12"><div id="bar1" class="w-full bg-blue-500 rounded-t-sm transition-all duration-1000" style="height: 0%"></div><span class="mt-2 font-bold">B</span><span id="pct1" class="text-xs">0%</span></div>
+                <div class="flex flex-col items-center w-12"><div id="bar2" class="w-full bg-blue-500 rounded-t-sm transition-all duration-1000" style="height: 0%"></div><span class="mt-2 font-bold">C</span><span id="pct2" class="text-xs">0%</span></div>
+                <div class="flex flex-col items-center w-12"><div id="bar3" class="w-full bg-blue-500 rounded-t-sm transition-all duration-1000" style="height: 0%"></div><span class="mt-2 font-bold">D</span><span id="pct3" class="text-xs">0%</span></div>
+            </div>
+            <button onclick="closeAudienceModal()" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 rounded-full font-bold shadow-lg transition-colors">Đóng</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. DATA: THE 20 QUESTIONS PROVIDED ---
+        // Mỗi câu đúng 0.5đ. Tổng 20 câu = 10đ.
+        const questionsData = [
+            {
+                q: 'Thuật ngữ "vật lí" (physics) có nguồn gốc từ tiếng Hy Lạp "physika", có nghĩa là gì?',
+                o: ['Kiến thức về xã hội.', 'Kiến thức về tự nhiên.', 'Kiến thức về kĩ thuật.', 'Kiến thức về toán học.'],
+                c: 1, // B
+                detail: 'Vật lí học (Physics) bắt nguồn từ "physika" trong tiếng Hy Lạp, có nghĩa là "kiến thức về tự nhiên", nghiên cứu các quy luật cơ bản của thế giới vật chất.'
+            },
+            {
+                q: 'Đối tượng nghiên cứu chủ yếu của Vật lí bao gồm những yếu tố nào sau đây?',
+                o: ['Các dạng vận động của vật chất (chất, trường) và năng lượng.', 'Sự thay đổi cấu trúc hóa học của các hợp chất cơ kim.', 'Lịch sử phát triển và quy luật xã hội của con người.', 'Sự phát triển và sinh trưởng của các loài sinh vật.'],
+                c: 0, // A
+                detail: 'Đối tượng nghiên cứu của Vật lí là các dạng vận động của vật chất (bao gồm chất và trường) và năng lượng cùng sự chuyển hóa của chúng.'
+            },
+            {
+                q: 'Nhà khoa học nào được coi là "cha đẻ của phương pháp thực nghiệm" trong Vật lí?',
+                o: ['Aristotle (Áristốt).', 'Galileo Galilei (Galilê).', 'Isaac Newton (Niutơn).', 'Albert Einstein (Anbanh Anhxtanh).'],
+                c: 1, // B
+                detail: 'Galileo Galilei là người đầu tiên đưa thí nghiệm vào nghiên cứu khoa học, mở ra kỉ nguyên của phương pháp thực nghiệm.'
+            },
+            {
+                q: 'Sơ đồ quy trình thực hiện phương pháp thực nghiệm theo thứ tự đúng là gì?',
+                o: ['Quan sát > Dự đoán > Thí nghiệm > Kết luận > Xác định vấn đề.', 'Xác định vấn đề > Quan sát, thu thập thông tin > Đưa ra dự đoán > Thí nghiệm kiểm tra > Kết luận.', 'Thí nghiệm kiểm tra > Quan sát > Dự đoán > Kết luận.', 'Đưa ra dự đoán > Xác định vấn đề > Thí nghiệm > Kết luận.'],
+                c: 1, // B
+                detail: 'Quy trình chuẩn: Xác định vấn đề -> Quan sát/Thu thập -> Dự đoán -> Thí nghiệm kiểm tra -> Kết luận.'
+            },
+            {
+                q: 'Máy hơi nước do James Watt sáng chế năm 1765 dựa trên những kết quả nghiên cứu về Nhiệt của Vật lí đã tạo tiền đề cho cuộc cách mạng nào?',
+                o: ['Cách mạng công nghiệp lần thứ nhất.', 'Cách mạng công nghiệp lần thứ hai.', 'Cách mạng công nghiệp lần thứ ba.', 'Cách mạng công nghiệp lần thứ tư.'],
+                c: 0, // A
+                detail: 'Máy hơi nước mở đầu cho sự cơ giới hóa, thay thế sức người và động vật, khởi nguồn cho Cách mạng công nghiệp lần thứ nhất.'
+            },
+            {
+                q: 'Trong nghiên cứu Vật lí, các loại mô hình thường được sử dụng phổ biến bao gồm:',
+                o: ['Mô hình hình thể, mô hình số hóa, mô hình trừu tượng.', 'Mô hình vật chất, mô hình lý thuyết, mô hình toán học.', 'Mô hình không gian, mô hình thời gian, mô hình gia tốc.', 'Mô hình giả thuyết, mô hình thực nghiệm, mô hình kết luận.'],
+                c: 1, // B
+                detail: 'Ba loại mô hình chính trong Vật lí là: Mô hình vật chất (vật thật thu nhỏ/phóng to), Mô hình lý thuyết (chất điểm, tia sáng...) và Mô hình toán học (công thức, đồ thị).'
+            },
+            {
+                q: 'Điểm khác biệt cốt lõi giữa phương pháp nghiên cứu của Aristotle và phương pháp của Galilei khi tìm hiểu về sự rơi của các vật là gì?',
+                o: ['Aristotle dựa vào thí nghiệm thực tế, Galilei dựa vào suy luận triết học.', 'Aristotle dựa vào quan sát và suy luận chủ quan, Galilei dùng thí nghiệm thực nghiệm để kiểm chứng.', 'Aristotle sử dụng mô hình toán học phức tạp, Galilei chỉ dùng quan sát bằng mắt thường.', 'Aristotle nghiên cứu trong chân không, Galilei nghiên cứu trong không khí.'],
+                c: 1, // B
+                detail: 'Aristotle chỉ quan sát chủ quan (vật nặng rơi nhanh hơn vật nhẹ), trong khi Galilei thiết kế thí nghiệm để kiểm chứng giả thuyết.'
+            },
+            {
+                q: 'Phát minh ra hiện tượng cảm ứng điện từ của Michael Faraday đã trực tiếp mở đường cho thành tựu công nghiệp nào dưới đây?',
+                o: ['Động cơ hơi nước trong giao thông vận tải.', 'Sự ra đời của máy phát điện và nền văn minh điện lực (Cách mạng công nghiệp lần thứ hai).', 'Bán dẫn, vi mạch và công nghệ máy tính số.', 'Trí tuệ nhân tạo (AI) và mạng internet vạn vật (IoT).'],
+                c: 1, // B
+                detail: 'Hiện tượng cảm ứng điện từ là nguyên lí cơ bản của máy phát điện, mở ra kỉ nguyên điện khí hóa thuộc Cách mạng công nghiệp lần 2.'
+            },
+            {
+                q: 'Việc coi một ô tô đang chuyển động trên quãng đường từ Hà Nội đến Hải Phòng là một "chất điểm" là ví dụ về loại mô hình nào?',
+                o: ['Mô hình vật chất.', 'Mô hình lý thuyết.', 'Mô hình toán học.', 'Mô hình thực nghiệm.'],
+                c: 1, // B
+                detail: '"Chất điểm" là một mô hình lý thuyết (mô hình khái niệm) bỏ qua kích thước của vật khi kích thước đó rất nhỏ so với quãng đường di chuyển.'
+            },
+            {
+                q: 'Trong phương pháp thực nghiệm, nếu kết quả thí nghiệm không phù hợp với dự đoán ban đầu thì nhà nghiên cứu cần phải làm gì?',
+                o: ['Thay đổi kết quả thí nghiệm cho phù hợp với dự đoán.', 'Ngừng nghiên cứu và công bố dự đoán là định luật.', 'Đưa ra dự đoán mới và làm lại thí nghiệm kiểm tra, hoặc xác định lại vấn đề.', 'Bỏ qua các số liệu bất thường và giữ nguyên kết luận.'],
+                c: 2, // C
+                detail: 'Khoa học luôn cần sự khách quan. Nếu thực nghiệm không khớp dự đoán, phải xem xét lại dự đoán hoặc vấn đề ban đầu.'
+            },
+            {
+                q: 'Nhận định nào sau đây thể hiện đúng tác động hai mặt của việc ứng dụng các thành tựu Vật lí?',
+                o: ['Vật lí chỉ mang lại lợi ích kinh tế, không gây ra bất kỳ tác hại nào.', 'Vật lí giúp chế tạo các thiết bị hiện đại nhưng cũng có thể gây ô nhiễm môi trường, nguy cơ vũ khí nếu sai mục đích.', 'Ứng dụng Vật lí hoàn toàn làm suy thoái môi trường sinh thái.', 'Vật lí giúp phát triển công nghệ nhưng không đóng góp gì cho các ngành khoa học khác.'],
+                c: 1, // B
+                detail: 'Khoa học công nghệ luôn có hai mặt. Bên cạnh lợi ích to lớn, nếu lạm dụng (phóng xạ, vũ khí hạt nhân, ô nhiễm...) sẽ mang lại hậu quả xấu.'
+            },
+            {
+                q: 'Khi xây dựng mô hình toán học trong Vật lí (như phương trình s = v . t), bước "Kiểm tra sự phù hợp của mô hình" có ý nghĩa gì?',
+                o: ['Đảm bảo công thức luôn đúng trong mọi điều kiện vũ trụ mà không cần đo đạc.', 'Đánh giá xem mô hình toán học có phản ánh chính xác quy luật vận động trong thực tế hoặc thí nghiệm hay không.', 'Để vẽ đồ thị đẹp hơn trong báo cáo khoa học.', 'Để thay thế hoàn toàn việc thực hiện các thí nghiệm trong thực tế.'],
+                c: 1, // B
+                detail: 'Mô hình toán học chỉ có giá trị khi nó phản ánh đúng các số liệu thu được từ thực nghiệm thực tế.'
+            },
+            {
+                q: 'Trường hợp nào sau đây là ứng dụng của mô hình vật chất trong học tập và nghiên cứu Vật lí?',
+                o: ['Sử dụng quả địa cầu thu nhỏ để mô phỏng sự quay của Trái Đất.', 'Sử dụng phương trình v = v0 + at để tính vận tốc.', 'Biểu diễn lực tác dụng bằng một mũi tên.', 'Coi Trái Đất là một chất điểm khi tính quỹ đạo.'],
+                c: 0, // A
+                detail: 'Mô hình vật chất là vật thay thế có cấu trúc và tính chất tương tự vật thật (ví dụ: quả địa cầu, sa bàn).'
+            },
+            {
+                q: 'Học sinh đo thời gian rơi của viên bi thép từ các độ cao khác nhau để kiểm tra dự đoán "thời gian rơi không phụ thuộc vào khối lượng". Học sinh này đang áp dụng phương pháp nào?',
+                o: ['Phương pháp lý thuyết thuần túy.', 'Phương pháp thực nghiệm.', 'Phương pháp diễn dịch triết học.', 'Phương pháp thống kê xã hội.'],
+                c: 1, // B
+                detail: 'Việc bố trí dụng cụ đo đạc số liệu để kiểm tra một dự đoán chính là đặc trưng của phương pháp thực nghiệm.'
+            },
+            {
+                q: 'Biểu thức vectơ lực F = m.a và đồ thị biểu diễn vận tốc v theo thời gian t thuộc loại mô hình nào?',
+                o: ['Mô hình vật chất.', 'Mô hình lý thuyết.', 'Mô hình toán học.', 'Mô hình giả định.'],
+                c: 2, // C
+                detail: 'Các phương trình, công thức, hàm số, đồ thị đều được xếp vào mô hình toán học.'
+            },
+            {
+                q: 'Đưa ra dự đoán: "Tốc độ bay hơi của nước phụ thuộc vào nhiệt độ và gió". Để kiểm tra dự đoán này theo phương pháp thực nghiệm, bước tiếp theo cần làm là gì?',
+                o: ['Rút ra ngay kết luận tốc độ bay hơi phụ thuộc vào nhiệt độ và gió.', 'Lập phương án thí nghiệm, tiến hành đo tốc độ bay hơi trong các điều kiện kiểm soát.', 'Đưa dự đoán lên mạng xã hội để tham khảo ý kiến cộng đồng.', 'Viết phương trình toán học biểu diễn sự bay hơi mà không cần đo đạc.'],
+                c: 1, // B
+                detail: 'Sau bước đưa ra dự đoán, bắt buộc phải lập phương án và tiến hành thí nghiệm kiểm tra.'
+            },
+            {
+                q: 'Theo logic phản chứng của Galilei về hai hòn đá buộc vào nhau, kết quả sẽ dẫn đến mâu thuẫn như thế nào để bác bỏ quan niệm của Aristotle?',
+                o: ['Hệ vật vừa rơi nhanh hơn vừa rơi chậm hơn hòn đá nặng (do hòn đá nhẹ cản trở).', 'Vật mới nặng hơn nên rơi nhanh hơn; nhưng hòn đá nhẹ rơi chậm lại níu hệ rơi chậm hơn hòn đá nặng > Mâu thuẫn logic.', 'Cả hai hòn đá sẽ dừng lại giữa chừng.', 'Hòn đá nhẹ rơi nhanh hơn làm dây buộc bị đứt.'],
+                c: 1, // B
+                detail: 'Đây là lập luận phản chứng nổi tiếng: Nếu A đúng, hệ buộc vào nhau phải rơi nhanh hơn (vì nặng hơn), nhưng đồng thời phải rơi chậm hơn (vì vật nhẹ kìm hãm vật nặng). Sự mâu thuẫn chứng tỏ giả thiết ban đầu của Aristotle sai.'
+            },
+            {
+                q: 'Tờ giấy vo tròn rơi nhanh hơn tờ để phẳng. Phân tích nào đúng nhất dưới góc độ phương pháp luận Vật lí?',
+                o: ['Chứng minh Aristotle đúng: vật nặng hơn rơi nhanh hơn.', 'Chứng minh Galilei sai trong mọi trường hợp.', 'Thí nghiệm cho thấy lực cản không khí ảnh hưởng rõ rệt. Mô hình rơi tự do chỉ áp dụng khi lực cản rất nhỏ.', 'Thí nghiệm bị hỏng do khối lượng hai tờ giấy thay đổi.'],
+                c: 2, // C
+                detail: 'Khối lượng 2 tờ giấy là như nhau. Sự khác biệt về thời gian rơi là do tờ phẳng chịu lực cản không khí lớn hơn nhiều.'
+            },
+            {
+                q: 'Khi mô hình toán học P = P0 - d.h không còn chính xác ở độ cao lớn, quy trình điều chỉnh chuẩn xác nhất là gì?',
+                o: ['Bỏ qua các độ cao lớn, chỉ áp dụng công thức cho độ cao dưới 10m.', 'Thu thập thêm dữ liệu thực nghiệm > Điều chỉnh mô hình toán học > Kiểm tra lại.', 'Tuyên bố mô hình toán học không có giá trị.', 'Giữ nguyên công thức cũ và cộng thêm một hằng số.'],
+                c: 1, // B
+                detail: 'Mô hình cần được cập nhật và hiệu chỉnh dựa trên các dữ liệu thực nghiệm mới phức tạp hơn để tăng tính chính xác.'
+            },
+            {
+                q: 'Nhận định nào phản ánh đúng nhất mối quan hệ giữa Vật lí lý thuyết và Vật lí thực nghiệm?',
+                o: ['Thực nghiệm luôn quyết định hoàn toàn, lý thuyết chỉ là tóm tắt số liệu.', 'Lý thuyết luôn đúng tuyệt đối, thực nghiệm sai biệt là do thực nghiệm hỏng.', 'Thực nghiệm cung cấp dữ liệu và kiểm chứng; lý thuyết định hướng, dự đoán hiện tượng mới tạo vòng lặp phát triển.', 'Hai phương pháp phát triển hoàn toàn độc lập.'],
+                c: 2, // C
+                detail: 'Lý thuyết và thực nghiệm có mối quan hệ biện chứng, tương hỗ không thể tách rời, thúc đẩy sự phát triển liên tục của Vật lí học.'
+            }
+        ];
+
+        // --- 2. GAME STATE ---
+        let currentLevel = 0; // 0 to 19
+        let score = 0; // currentLevel * 0.5
+        let isAnimating = false;
+        let lifelines = {
+            fiftyFifty: true,
+            callFriend: true,
+            askAudience: true
+        };
+        const milestones = [4, 9, 14]; // Index 4 (Q5), 9 (Q10), 14 (Q15). Note: Q1 is index 0.
+
+        // --- 3. AUDIO SYSTEM (Tone.js) ---
+        let bgmSynth, bgmLoop;
+        let isAudioInit = false;
+
+        async function initAudio() {
+            if (isAudioInit) return;
+            await Tone.start();
+            isAudioInit = true;
+
+            // Background Music (Suspenseful heartbeat/bass)
+            bgmSynth = new Tone.MembraneSynth().toDestination();
+            bgmSynth.volume.value = -15;
+            
+            let tick = 0;
+            bgmLoop = new Tone.Loop((time) => {
+                if (tick % 4 === 0) bgmSynth.triggerAttackRelease("C2", "8n", time);
+                else if (tick % 4 === 2) bgmSynth.triggerAttackRelease("C2", "16n", time, 0.5);
+                tick++;
+            }, "8n");
+            
+            Tone.Transport.bpm.value = 100;
+            Tone.Transport.start();
+            bgmLoop.start();
+        }
+
+        function playSound(type) {
+            if (!isAudioInit) return;
+            const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+            synth.volume.value = -10;
+
+            if (type === 'select') {
+                synth.triggerAttackRelease(["C4", "G4"], "8n");
+            } else if (type === 'correct') {
+                synth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "4n");
+                // Stop BGM temporarily for effect
+                bgmSynth.volume.rampTo(-40, 0.5);
+                setTimeout(() => bgmSynth.volume.rampTo(-15, 1), 2000);
+            } else if (type === 'wrong') {
+                synth.triggerAttackRelease(["C3", "Gb2", "C2"], "2n");
+                bgmLoop.stop();
+            } else if (type === 'gift') {
+                synth.triggerAttackRelease(["G4", "B4", "D5", "G5"], "2n");
+            }
+        }
+
+        // --- STREAMING_CHUNK:Core Game Logic... ---
+        function initGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('flex');
+            
+            const appWrapper = document.getElementById('appWrapper');
+            appWrapper.classList.remove('hidden');
+            appWrapper.classList.add('flex');
+            
+            initAudio();
+            renderMilestones();
+            loadQuestion();
+        }
+
+        function renderMilestones() {
+            const list = document.getElementById('milestoneList');
+            list.innerHTML = '';
+            // Render from 20 down to 1
+            for (let i = 19; i >= 0; i--) {
+                const div = document.createElement('div');
+                div.className = 'px-4 py-1 rounded-md text-sm md:text-base transition-colors duration-300';
+                
+                const qNum = i + 1;
+                const points = ((i + 1) * 0.5).toFixed(1);
+                div.innerHTML = `<span class="w-8 inline-block text-left">${qNum}</span> <span>♦ ${points} đ</span>`;
+                
+                // Styling based on state
+                if (i === currentLevel) {
+                    div.classList.add('milestone-active');
+                } else if (i < currentLevel) {
+                    div.classList.add('milestone-passed');
+                } else if (milestones.includes(i)) {
+                    div.classList.add('milestone-safe');
+                } else {
+                    div.classList.add('text-gray-400');
+                }
+                
+                list.appendChild(div);
+            }
+            document.getElementById('mobileScore').innerText = (currentLevel * 0.5).toFixed(1);
+        }
+
+        function loadQuestion() {
+            isAnimating = false;
+            const qData = questionsData[currentLevel];
+            
+            document.getElementById('qNumberDisplay').innerText = currentLevel + 1;
+            document.getElementById('questionText').innerText = qData.q;
+            
+            for (let i = 0; i < 4; i++) {
+                const btn = document.getElementById(`ans${i}`);
+                const text = document.getElementById(`text${i}`);
+                
+                text.innerText = qData.o[i];
+                btn.className = 'answer-btn p-4 flex items-center group'; // reset classes
+                btn.style.visibility = 'visible';
+            }
+            renderMilestones();
+        }
+
+        function selectAnswer(index) {
+            if (isAnimating) return;
+            const qData = questionsData[currentLevel];
+            const btn = document.getElementById(`ans${index}`);
+            
+            // Cannot click if hidden by 50/50
+            if (btn.style.visibility === 'hidden') return;
+
+            isAnimating = true;
+            playSound('select');
+            
+            // Reset all buttons first just in case
+            for(let i=0; i<4; i++) {
+                if(document.getElementById(`ans${i}`).style.visibility !== 'hidden') {
+                    document.getElementById(`ans${i}`).className = 'answer-btn p-4 flex items-center group opacity-80';
+                }
+            }
+            
+            btn.classList.add('selected');
+            btn.classList.remove('opacity-80');
+
+            // Wait 2 seconds for suspense
+            setTimeout(() => {
+                btn.classList.remove('selected');
+                
+                if (index === qData.c) {
+                    // CORRECT
+                    playSound('correct');
+                    btn.classList.add('correct');
+                    showDetailModal(true, qData.detail);
+                } else {
+                    // WRONG
+                    playSound('wrong');
+                    btn.classList.add('wrong');
+                    document.getElementById(`ans${qData.c}`).classList.add('correct'); // Show correct answer
+                    showDetailModal(false, qData.detail);
+                }
+            }, 2000);
+        }
+
+        // --- STREAMING_CHUNK:Modals and Interstitials... ---
+        function showDetailModal(isCorrect, detailText) {
+            setTimeout(() => {
+                const modal = document.getElementById('detailModal');
+                const title = document.getElementById('detailTitle');
+                
+                title.innerText = isCorrect ? "CHÍNH XÁC! (+0.5đ)" : "RẤT TIẾC, SAI RỒI!";
+                title.className = `text-3xl font-bold mb-4 ${isCorrect ? 'text-green-400' : 'text-red-500'}`;
+                
+                document.getElementById('detailContent').innerHTML = detailText;
+                
+                // Store result state to process after modal close
+                modal.dataset.isCorrect = isCorrect;
+                modal.style.display = 'flex';
+            }, 1000);
+        }
+
+        function closeDetailModal() {
+            const modal = document.getElementById('detailModal');
+            modal.style.display = 'none';
+            const isCorrect = modal.dataset.isCorrect === 'true';
+
+            if (isCorrect) {
+                currentLevel++;
+                if (currentLevel === 16) {
+                    // Hit 8 points (Question 16 completed) -> Show Secret Gift
+                    showGiftModal();
+                } else if (currentLevel >= questionsData.length) {
+                    // Win game
+                    endGame(true);
+                } else {
+                    loadQuestion();
+                }
+            } else {
+                endGame(false);
+            }
+        }
+
+        function getSafeScore() {
+            // Find highest passed milestone
+            let safeLevel = 0;
+            for (let i = milestones.length - 1; i >= 0; i--) {
+                if (currentLevel > milestones[i]) {
+                    safeLevel = milestones[i] + 1; // e.g., pass Q5 (index 4) -> safe at 5 correct
+                    break;
+                }
+            }
+            return (safeLevel * 0.5).toFixed(1);
+        }
+
+        function endGame(isWin) {
+            const modal = document.getElementById('endModal');
+            const title = document.getElementById('endTitle');
+            const scoreDisplay = document.getElementById('endScore');
+            
+            if (isWin) {
+                title.innerText = "CHÚC MỪNG TRIỆU PHÚ!";
+                title.className = "text-4xl font-bold mb-2 text-green-400 drop-shadow-[0_0_15px_rgba(34,197,94,0.8)]";
+                scoreDisplay.innerText = "10.0";
+            } else {
+                title.innerText = "GAME OVER";
+                title.className = "text-4xl font-bold mb-2 text-red-500";
+                scoreDisplay.innerText = getSafeScore();
+            }
+            
+            modal.style.display = 'flex';
+        }
+
+        // --- STREAMING_CHUNK:Secret Gift Logic... ---
+        function showGiftModal() {
+            document.getElementById('giftModal').style.display = 'flex';
+            document.getElementById('giftBoxes').style.display = 'flex';
+            document.getElementById('giftResult').style.display = 'none';
+            playSound('correct'); // Fanfare
+        }
+
+        function openGift(index) {
+            const boxes = document.querySelectorAll('.gift-box');
+            boxes.forEach(b => b.classList.add('opacity-50', 'pointer-events-none'));
+            boxes[index].classList.remove('opacity-50');
+            boxes[index].classList.add('opened');
+
+            playSound('gift');
+            
+            const gifts = [
+                "1 Tràng pháo tay nồng nhiệt từ khán giả! 👏",
+                "Được cộng thêm sự tự tin vô cực! ✨",
+                "Một lời khen: Bạn quá xuất sắc! 🌟"
+            ];
+            
+            // Randomize slightly but keep it fun
+            const resultText = gifts[Math.floor(Math.random() * gifts.length)];
+            
+            setTimeout(() => {
+                document.getElementById('giftBoxes').style.display = 'none';
+                document.getElementById('giftText').innerText = resultText;
+                document.getElementById('giftResult').style.display = 'block';
+            }, 800);
+        }
+
+        function closeGiftModal() {
+            document.getElementById('giftModal').style.display = 'none';
+            loadQuestion();
+        }
+
+        // --- STREAMING_CHUNK:Lifeline Logic... ---
+        function use5050() {
+            if (!lifelines.fiftyFifty || isAnimating) return;
+            lifelines.fiftyFifty = false;
+            document.getElementById('btn5050').classList.add('opacity-30', 'cursor-not-allowed', 'line-through');
+            
+            const qData = questionsData[currentLevel];
+            const cIndex = qData.c;
+            let hiddenCount = 0;
+            
+            // Randomly hide 2 incorrect answers
+            let indices = [0, 1, 2, 3].filter(i => i !== cIndex);
+            indices.sort(() => Math.random() - 0.5); // Shuffle
+            
+            document.getElementById(`ans${indices[0]}`).style.visibility = 'hidden';
+            document.getElementById(`ans${indices[1]}`).style.visibility = 'hidden';
+            playSound('select');
+        }
+
+        function useCall() {
+            if (!lifelines.callFriend || isAnimating) return;
+            lifelines.callFriend = false;
+            document.getElementById('btnCall').classList.add('opacity-30', 'cursor-not-allowed', 'line-through');
+            
+            const qData = questionsData[currentLevel];
+            const correctLetter = ['A', 'B', 'C', 'D'][qData.c];
+            
+            document.getElementById('callModal').style.display = 'flex';
+            const msgEl = document.getElementById('callMessage');
+            msgEl.innerText = "Đang kết nối...";
+            
+            setTimeout(() => {
+                // High chance of correct answer
+                if (Math.random() > 0.1) {
+                    msgEl.innerText = `"Chào bạn, câu này mình học rồi, mình chắc chắn 99% đáp án là ${correctLetter}."`;
+                } else {
+                    msgEl.innerText = `"Trời ơi khó quá, mình không chắc lắm, hình như là ${correctLetter} thì phải..."`;
+                }
+            }, 1500);
+        }
+
+        function closeCallModal() {
+            document.getElementById('callModal').style.display = 'none';
+        }
+
+        function useAudience() {
+            if (!lifelines.askAudience || isAnimating) return;
+            lifelines.askAudience = false;
+            document.getElementById('btnAudience').classList.add('opacity-30', 'cursor-not-allowed', 'line-through');
+            
+            const qData = questionsData[currentLevel];
+            document.getElementById('audienceModal').style.display = 'flex';
+            
+            // Reset bars
+            for(let i=0; i<4; i++) {
+                document.getElementById(`bar${i}`).style.height = '0%';
+                document.getElementById(`pct${i}`).innerText = '0%';
+            }
+
+            setTimeout(() => {
+                // Generate percentages favoring the correct answer
+                let p = [0, 0, 0, 0];
+                let remaining = 100;
+                
+                // Correct gets between 40% and 80%
+                p[qData.c] = Math.floor(Math.random() * 40) + 40;
+                remaining -= p[qData.c];
+                
+                // Distribute rest
+                for(let i=0; i<4; i++) {
+                    if (i !== qData.c) {
+                        if (remaining > 0) {
+                            let share = Math.floor(Math.random() * (remaining + 1));
+                            // Ensure last element gets the exact rest if it's the last iteration
+                            if (i === 3 || (i === 2 && qData.c === 3)) {
+                                share = remaining;
+                            }
+                            p[i] = share;
+                            remaining -= share;
+                        }
+                    }
+                }
+                
+                // Animate bars
+                for(let i=0; i<4; i++) {
+                    document.getElementById(`bar${i}`).style.height = `${p[i]}%`;
+                    document.getElementById(`pct${i}`).innerText = `${p[i]}%`;
+                }
+            }, 500);
+        }
+
+        function closeAudienceModal() {
+            document.getElementById('audienceModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
